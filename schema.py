@@ -103,5 +103,6 @@ class PlayEvent(BaseModel):
     timeoutType: Optional[str] = None
 
 class PlayRow(BaseModel):
-    videoTitle: str
+    gameName: str
+    fps: float
     events: list[PlayEvent]

@@ -3,9 +3,9 @@ from encord import EncordUserClient
 from encord.client import DatasetAccessSettings
 
 user_client = EncordUserClient.create_with_ssh_private_key(
-    ssh_private_key_path="/home/uswe/Downloads/data-intern-repo/encord/encord-yaman_key-private-key.ed25519"
+    ssh_private_key_path="/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
 )
-dataset = user_client.get_dataset("c11fda6e-40cd-4e6d-9eeb-d327bf3d7b30")
+dataset = user_client.get_dataset("2d2c79b9-ba29-4246-9a20-6d82d04a50e7")
 dataset.set_access_settings(
     DatasetAccessSettings(fetch_client_metadata=True)
 )

@@ -1,108 +1,148 @@
 import csv
-import json
-from pathlib import Path
 from encord import EncordUserClient
 from encord.client import DatasetAccessSettings
 from encord.objects import Classification
-from schema import PlayEvent
-from builders import time_to_frame, clean_field, parse_list_field
+from schema import PlayEvent, PlayRow
+from builders import time_to_frame, parse_list_field
+
 
 # CONFIG
-PROJECT_HASH = "4cf4e3a8-d509-498d-8510-bffc79aa3a17"
-DATASET_HASH = "c11fda6e-40cd-4e6d-9eeb-d327bf3d7b30"
-FPS = 59.94
-CSV_PATH = "/home/uswe/Downloads/data-intern-repo/homework/Event Data Listified/punt attempt.csv"
-VIDEO_TITLE = "training-films-highschool-PLAYON-VerificationVideos-2024-Blue-Cross-Bowl-Football-Championship-_-TSSAA-Div-II-Class-AAA-Baylor-vs-McCallie-KeyPoints-Frames_11.mp4"
+PROJECT_HASH = "ef2da450-7835-448e-9ec4-0a2193c3412c"
+DATASET_HASH = "2d2c79b9-ba29-4246-9a20-6d82d04a50e7"
+CSV_PATH = "/home/uswe/Downloads/data-intern-repo/encord/Event Data and Schema/Event Data Listified/pass attempt.csv"
+
+TASK_TYPE = "pass"  # "pass" or "rush"
+
 
 # CLIENT SETUP
 user_client = EncordUserClient.create_with_ssh_private_key(
-    ssh_private_key_path="/home/uswe/Downloads/data-intern-repo/encord/encord-yaman_key-private-key.ed25519"
+    ssh_private_key_path="/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
 )
+
 dataset = user_client.get_dataset(DATASET_HASH)
 dataset.set_access_settings(DatasetAccessSettings(fetch_client_metadata=True))
 
 project = user_client.get_project(PROJECT_HASH)
 label_rows = project.list_label_rows_v2()
 
-# FUNCTION TO GET CLASSIFICATION OBJECT
+
+# GET CLASSIFICATION OBJECT
 def create_classification_obj(title: str, type_) -> Classification:
     return project.ontology_structure.get_child_by_title(title=title, type_=type_)
 
-# CREATE CLASSIFICATION OBJECTS
-eventType_cls = create_classification_obj("eventType", Classification)
-# start_time_cls = create_classification_obj("startTime", Classification)
-# end_time_cls = create_classification_obj("endTime", Classification)
 
-# READ CSV AND CREATE EVENTS
+eventType_cls = create_classification_obj("eventType", Classification)
+
+
+# READ CSV AND BUILD PLAY ROWS
 play_rows = []
 
 with open(CSV_PATH, "r", newline="") as f:
     reader = csv.DictReader(f)
+
     for row in reader:
         events = []
 
-        # Convert stringified lists to Python lists
         event_types = parse_list_field(row.get("eventType", ""))
         start_times = parse_list_field(row.get("startTime", ""))
         end_times = parse_list_field(row.get("endTime", ""))
-        punt_results = parse_list_field(row.get("puntResult", ""))
-        punt_directions = parse_list_field(row.get("puntDirection", ""))
 
+        passer = parse_list_field(row.get("passer", ""))
+        receiver = parse_list_field(row.get("receiver", ""))
+        pass_direction = parse_list_field(row.get("passDirection", ""))
+        pass_result = parse_list_field(row.get("passResult", ""))
+
+        ball_carrier = parse_list_field(row.get("ballCarrier", ""))
+        rush_direction = parse_list_field(row.get("rushDirection", ""))
+        rushing_yards = parse_list_field(row.get("rushingYards", ""))
+        rush_type = parse_list_field(row.get("rushType", ""))
+        rush_scheme = parse_list_field(row.get("rushScheme", ""))
+        rushing_attempt_result = parse_list_field(row.get("rushingAttemptResult", ""))
 
         for i in range(len(event_types)):
-            events.append(
-                PlayEvent(
-                    eventType=event_types[i],
-                    startTime=start_times[i],
-                    endTime=end_times[i],
-                    puntResult=punt_results[i] if i < len(punt_results) else None,
-                    puntDirection=punt_directions[i] if i < len(punt_directions) else None
-                )
+            event = PlayEvent(
+                eventType=event_types[i],
+                startTime=start_times[i],
+                endTime=end_times[i],
             )
 
-        play_rows.append({
-            "videoTitle": VIDEO_TITLE,
-            "events": events
-        })
+            if TASK_TYPE == "pass" and event.eventType == "Pass Attempt":
+                event.passer = passer[i] if i < len(passer) else None
+                event.receiver = receiver[i] if i < len(receiver) else None
+                event.passDirection = pass_direction[i] if i < len(pass_direction) else None
+                event.passResult = pass_result[i] if i < len(pass_result) else None
 
-# PROCESS EACH VIDEO ROW
+            if TASK_TYPE == "rush" and event.eventType == "Rushing Attempt":
+                event.ballCarrier = ball_carrier[i] if i < len(ball_carrier) else None
+                event.rushDirection = rush_direction[i] if i < len(rush_direction) else None
+                event.rushingYards = rushing_yards[i] if i < len(rushing_yards) else None
+                event.rushType = rush_type[i] if i < len(rush_type) else None
+                event.rushScheme = rush_scheme[i] if i < len(rush_scheme) else None
+                event.rushingAttemptResult = rushing_attempt_result[i] if i < len(rushing_attempt_result) else None
+
+            events.append(event)
+
+        play_rows.append(
+            PlayRow(
+                gameName=row["gameName"],
+                fps=float(row["fps"]),
+                events=events,
+            )
+        )
+
+
+# PROCESS EACH VIDEO
 for play_row in play_rows:
-    video_title = play_row["videoTitle"]
     events_metadata = []
 
-    for event in play_row["events"]:
-        start_frame = time_to_frame(event.startTime, FPS)
-        end_frame = time_to_frame(event.endTime, FPS)
+    for event in play_row.events:
+        start_frame = time_to_frame(event.startTime, play_row.fps)
+        end_frame = time_to_frame(event.endTime, play_row.fps)
 
-        events_metadata.append({
+        meta = {
             "eventType": event.eventType,
             "startTime": event.startTime,
             "endTime": event.endTime,
             "startFrame": start_frame,
             "endFrame": end_frame,
-            "puntResult": event.puntResult,
-            "puntDirection": event.puntDirection
-        })
+        }
 
-    # SAVE CLIENT METADATA TO DATASET ROW
+        if event.eventType == "Pass Attempt":
+            meta["pass"] = {
+                "passer": event.passer,
+                "receiver": event.receiver,
+                "passDirection": event.passDirection,
+                "passResult": event.passResult,
+            }
+
+        if event.eventType == "Rushing Attempt":
+            meta["rush"] = {
+                "ballCarrier": event.ballCarrier,
+                "rushDirection": event.rushDirection,
+                "rushingYards": event.rushingYards,
+            }
+
+        events_metadata.append(meta)
+
+
+    # SAVE CLIENT METADATA
     for data_row in dataset.data_rows:
-        if data_row.title == video_title:
+        if data_row.title == play_row.gameName:
             data_row.client_metadata = {
-                "events": events_metadata,
-                "source": "DataOps",
-                "fps": FPS
+                "events": events_metadata
             }
             data_row.save()
             break
 
-    # SAVE CLASSIFICATIONS PER EVENT
+
+    # SAVE CLASSIFICATIONS
     for label_row in label_rows:
         if label_row.data_type != "video":
             continue
-        if label_row.data_title != video_title:
+        if label_row.data_title != play_row.gameName:
             continue
 
-        labels = label_row.initialise_labels()
+        label_row.initialise_labels()
 
         for meta in events_metadata:
             option = eventType_cls.get_child_by_title(meta["eventType"])
@@ -111,10 +151,10 @@ for play_row in play_rows:
             inst.set_for_frames(
                 frames=list(range(meta["startFrame"], meta["endFrame"] + 1)),
                 manual_annotation=True,
-                confidence=1.0
+                confidence=1.0,
             )
             label_row.add_classification_instance(inst)
 
         label_row.save()
 
-print("Frame-level classifications and client metadata completed")
+print("Ingestion completed")
