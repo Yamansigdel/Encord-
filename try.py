@@ -14,7 +14,7 @@ PROJECT_HASH = "bcdef3a1-157a-4bac-813d-160d1726bd6a"
 DATASET_HASH = "29ecc840-4873-49a6-a5be-6f70f590d550"
 CSV_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/artifacts/pass attempt.csv"
 
-TASK_TYPE = "pass"  # "pass" or "rush"
+object_labelling=False
 
 
 # CLIENT SETUP
@@ -73,7 +73,7 @@ with open(CSV_PATH, "r", newline="") as f:
                 endTime=end_times[i],
             )
 
-            if TASK_TYPE == "pass" and event.eventType == "Pass Attempt":
+            if event.eventType == "Pass Attempt":
                 event.passer = passer[i] if i < len(passer) else None
                 event.receiver = receiver[i] if i < len(receiver) else None
                 event.passDirection = pass_direction[i] if i < len(pass_direction) else None
@@ -89,7 +89,7 @@ with open(CSV_PATH, "r", newline="") as f:
                         *passer_bbox_end, frame_width, frame_height
                     )
 
-            if TASK_TYPE == "rush" and event.eventType == "Rushing Attempt":
+            if event.eventType == "Rushing Attempt":
                 event.ballCarrier = ball_carrier[i] if i < len(ball_carrier) else None
                 event.rushDirection = rush_direction[i] if i < len(rush_direction) else None
                 event.rushingYards = rushing_yards[i] if i < len(rushing_yards) else None
@@ -178,6 +178,7 @@ for label_row in label_rows:
             event.eventType == "Pass Attempt"
             and event.passerBboxStart
             and event.passerBboxEnd
+            and object_labelling
         ):
             x1, y1, w1, h1 = (event.passerBboxStart["x"],event.passerBboxStart["y"],event.passerBboxStart["w"],event.passerBboxStart["h"])
             x2, y2, w2, h2 = (event.passerBboxEnd["x"],event.passerBboxEnd["y"],event.passerBboxEnd["w"],event.passerBboxEnd["h"])
