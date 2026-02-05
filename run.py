@@ -9,8 +9,11 @@ from builders import time_to_frame, parse_list_field
 PROJECT_HASH = "bcdef3a1-157a-4bac-813d-160d1726bd6a"
 DATASET_HASH = "29ecc840-4873-49a6-a5be-6f70f590d550"
 CSV_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/artifacts/pass attempt .csv"
+SSH_KEY_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
+BUNDLE_SIZE = 100
+
 user_client = EncordUserClient.create_with_ssh_private_key(
-    ssh_private_key_path="/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
+    ssh_private_key_path=SSH_KEY_PATH
 )
 
 # CLIENT SETUP
@@ -131,15 +134,22 @@ for play_row in play_rows:
             data_row.save()
             break
 
-    #Map Ojects & Classification labels
-    for label_row in label_rows:
-        if label_row.data_type != "video":
-            continue
-        if label_row.data_title != play_row.gameName:
-            continue
+    matching_label_rows = [
+        lr for lr in label_rows
+        if lr.data_type == "video" and lr.data_title == play_row.gameName
+    ]
+    if not matching_label_rows:
+        continue
 
-        label_row.initialise_labels(include_object_feature_hashes=set(), include_classification_feature_hashes=set())
+    with project.create_bundle(bundle_size=BUNDLE_SIZE) as bundle:
+        for lr in matching_label_rows:
+            lr.initialise_labels(
+                include_object_feature_hashes=set(),
+                include_classification_feature_hashes=set(),
+                bundle=bundle,
+            )
 
+    for lr in matching_label_rows:
         for event, meta in zip(play_row.events, events_metadata):
             option = eventType_cls.get_child_by_title(meta["eventType"])
             cls_inst = eventType_cls.create_instance()
@@ -149,8 +159,12 @@ for play_row in play_rows:
                 manual_annotation=True,
                 confidence=1.0,
             )
-            label_row.add_classification_instance(cls_inst)
+            lr.add_classification_instance(cls_inst)
 
-        label_row.save()
+    with project.create_bundle(bundle_size=BUNDLE_SIZE) as bundle:
+        for lr in matching_label_rows:
+            lr.save(bundle=bundle)
 
-print("Ingest Complete")
+    print("Ingestion Complete for game:", play_row.gameName)
+
+print("Ingestion Complete")
