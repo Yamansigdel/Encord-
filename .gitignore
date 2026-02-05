@@ -1,0 +1,18 @@
+#Python cache
+__pycache__/
+
+
+# SSH / private keys
+encord/encord-yaman_key-private-key.ed25519/
+
+
+#videos
+*.mp4
+
+#json/csv files
+*.csv
+*.json
+
+# Artifacts
+encord/pipeline/artifacts/
+
