@@ -12,7 +12,7 @@ from builders import time_to_frame, parse_list_field, normalize_bbox, parse_bbox
 # CONFIG
 PROJECT_HASH = "bcdef3a1-157a-4bac-813d-160d1726bd6a"
 DATASET_HASH = "29ecc840-4873-49a6-a5be-6f70f590d550"
-CSV_PATH = "/home/uswe/Downloads/data-intern-repo/encord/Event Data and Schema/Event Data Listified/pass attempt.csv"
+CSV_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/artifacts/pass attempt.csv"
 
 TASK_TYPE = "pass"  # "pass" or "rush"
 
