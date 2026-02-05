@@ -32,6 +32,8 @@ class PlayEvent(BaseModel):
     passingYards: Optional[int] = None
     yardsAfterCatch: Optional[int] = None
     incompletionReason: Optional[str] = None
+    passerBboxStart: Optional[tuple[float, float, float, float]] = None
+    passerBboxEnd: Optional[tuple[float, float, float, float]] = None
 
     # Tackles
     tackleType: Optional[str] = None
@@ -105,4 +107,6 @@ class PlayEvent(BaseModel):
 class PlayRow(BaseModel):
     gameName: str
     fps: float
+    width: int
+    height: int
     events: list[PlayEvent]
