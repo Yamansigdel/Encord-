@@ -30,3 +30,23 @@ def parse_list_field(s: str):
         return []
     # split by comma, remove extra spaces
     return [item.strip() for item in cleaned.split(",")]
+
+def normalize_bbox(x, y, w, h, frame_w, frame_h):
+    return {
+        "x": x / frame_w,
+        "y": y / frame_h,
+        "w": w / frame_w,
+        "h": h / frame_h,
+    }
+
+def parse_bbox_field(s: str):
+    cleaned = clean_field(s)
+    if not cleaned:
+        return None
+
+    parts = [p.strip() for p in cleaned.split(",")]
+    if len(parts) != 4:
+        return None
+
+    return tuple(map(float, parts))
+
