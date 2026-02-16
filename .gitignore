@@ -3,7 +3,7 @@ __pycache__/
 
 
 # SSH / private keys
-encord/encord-yaman_key-private-key.ed25519/
+encord/pipeline/encord-yaman_key-private-key.ed25519/
 
 
 #videos

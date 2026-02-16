@@ -26,8 +26,8 @@ class VideoMetadata(BaseModel):
     duration: float
     width: int
     height: int
-    file_size: Optional[int] = None
-    mime_type: Optional[str] = None
+    file_size: int = 0
+    mime_type: str = "video/mp4"
 
     @model_validator(mode="after")
     def validate_video_metadata(self):
