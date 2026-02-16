@@ -4,14 +4,15 @@ from encord.storage import FoldersSortBy
 from encord.objects import Classification
 from encord.client import DatasetAccessSettings
 from helper import time_to_frame, load_json_schema
+from encord.objects.attributes import ChecklistAttribute
 from encord.orm.dataset import LongPollingStatus, StorageLocation
 
 #CONFIG
 BUNDLE_SIZE = 100
-INTEGRATION_ID="12345"
-JSON_PATH = "input.json"
-ONTOLOGY_HASH = "YOUR_ONTOLOGY_HASH"
-SSH_KEY_PATH = "/path/to/private-key.ed25519"
+INTEGRATION_ID="5631cdf7-34df-4174-9fa2-9d537e186717"
+JSON_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/artifacts/video_info.json"
+ONTOLOGY_HASH = "2e2fd297-b593-4af0-b600-f27eaa6e21b5"
+SSH_KEY_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
 
 #LOAD JSON
 videos = load_json_schema(JSON_PATH)
@@ -78,12 +79,20 @@ while True:
 
 print(f"All videos Uploaded to folder {storage_folder.name}")
 
-#CREATE DATASET
-dataset = user_client.create_dataset(
-    dataset_title=dataset_title,
-    dataset_type=StorageLocation.AWS,
-    create_backing_folder=False,
-)
+# FIND OR CREATE DATASET
+existing = user_client.get_datasets(title_eq=dataset_title)
+if existing:
+    dataset_hash = existing[0]["dataset"].dataset_hash
+    dataset = user_client.get_dataset(dataset_hash)
+    print(f"Using existing dataset: {dataset.title} ({dataset_hash})")
+else:
+    dataset_response = user_client.create_dataset(
+        dataset_title=dataset_title,
+        dataset_type=StorageLocation.AWS,
+        create_backing_folder=False,
+    )
+    dataset = user_client.get_dataset(dataset_response.dataset_hash)
+    print(f"Created new dataset: {dataset.title} ({dataset.dataset_hash})")
 
 # LINK FOLDER ITEMS TO DATASET
 items = list(storage_folder.list_items())
@@ -96,29 +105,38 @@ dataset.set_access_settings(
     DatasetAccessSettings(fetch_client_metadata=True)
 )
 
-#reload dataset object
-dataset = user_client.get_dataset(dataset.hash)
+# FIND OR CREATE PROJECT
+existing_project = list(user_client.list_projects(title_eq=project_title))
 
-#CREATE PROJECT
-project = user_client.create_project(
-    title=project_title,
-    ontology_hash=ONTOLOGY_HASH,
-    dataset_hashes=[dataset.hash],
-)
+if existing_project:
+    project = existing_project[0]
+    project_hash = project.project_hash
+    print(f"Using existing project: {project.title} ({project_hash})")
+else:
+    project_hash = user_client.create_project(
+        project_title=project_title,
+        ontology_hash=ONTOLOGY_HASH,
+        dataset_hashes=[dataset.dataset_hash],
+    )
 
-#reload project object
-project = user_client.get_project(project.hash)
+    project = user_client.get_project(project_hash)
+    print(f"Created new project: {project.title} ({project_hash})")
+
 label_rows = project.list_label_rows_v2()
 
-#ONTOLOGY FETCH
+#Create Classification Object for eventType
 eventType_cls = project.ontology_structure.get_child_by_title(
     title="eventType",
     type_=Classification,
 )
 
+#Get eventType classification attribute
+eventType_attr: ChecklistAttribute = eventType_cls.get_child_by_title(title="eventType", type_=ChecklistAttribute)
+
+#Get the option children of that attribute
 valid_event_types = {
-    child.title
-    for child in eventType_cls.get_children()
+    opt.title
+    for opt in eventType_attr.children
 }
 
 #METADATA + CLASSIFICATION
@@ -188,7 +206,7 @@ for video in videos:
                 continue
 
             cls_inst = eventType_cls.create_instance()
-            cls_inst.set_answer(option)
+            cls_inst.set_answer([option])
 
             cls_inst.set_for_frames(
                 frames=list(range(meta["startFrame"], meta["endFrame"] + 1)),
