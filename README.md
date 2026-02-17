@@ -89,8 +89,40 @@ Example structure:
             }
         ]
       }
+    },
+{
+      "objectUrl": "https://bucket.s3.region.amazonaws.com/path/play2.mp4",
+      "title": "gameid_gamename_playnumber_clipStartTime_clipEndTime.mp4",
+      "videoMetadata": {
+          "fps": 30,
+          "duration": 11,
+          "width": 1920,
+          "height": 1080,
+          "file_size": 8021424,
+          "mime_type": "video/mp4"
+        },
+      "clientMetadata": {
+        "events":[
+          {
+            "eventType": "run",
+            "startTime": "00:00:03",
+            "endTime": "00:00:04"
+          },
+          {
+            "eventType": "throw",
+            "startTime": "00:00:05",
+            "endTime": "00:00:07"
+          },
+          {
+            "eventType": "catch",
+            "startTime": "00:00:08",
+            "endTime": "00:00:10"
+          }
+        ]
+      }
     }   
-  ]
+  ],
+  "skip_duplicate_urls": true
 }
 ```
 
