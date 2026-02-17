@@ -20,8 +20,20 @@ videos = load_json_schema(JSON_PATH)
 if not videos:
     raise ValueError("No videos found in JSON")
 
-project_title = videos[0].projectTitle
-dataset_title = videos[0].datasetTitle
+project_title = None
+dataset_title = None
+
+for video in videos:
+    if video.projectTitle and video.datasetTitle:
+        project_title = video.projectTitle
+        dataset_title = video.datasetTitle
+        break
+
+
+if not project_title or not dataset_title:
+    raise ValueError(
+        "projectTitle and datasetTitle must be defined in at least one video"
+    )
 
 #INITIALIZE CLIENT
 user_client = EncordUserClient.create_with_ssh_private_key(

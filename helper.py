@@ -82,8 +82,8 @@ def load_json_schema(json_path: str) -> List[VideoUnit]:
                 file_size=metadata.get("file_size"),
                 mime_type=metadata.get("mime_type"),
             ),
-            projectTitle=client_meta["projectTitle"],
-            datasetTitle=client_meta["datasetTitle"],
+            projectTitle=client_meta.get("projectTitle"),
+            datasetTitle=client_meta.get("datasetTitle"),
             events=events,
             )
 
