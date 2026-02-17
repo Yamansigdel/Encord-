@@ -49,14 +49,14 @@ class VideoUnit(BaseModel):
     objectUrl: HttpUrl
     title: str
     videoMetadata: VideoMetadata
-    projectTitle: str
-    datasetTitle: str
+    projectTitle: Optional[str] = None
+    datasetTitle: Optional[str] = None
     events: List[PlayEvent] = field(default_factory=list)
 
-    @field_validator("title", "projectTitle", "datasetTitle")
+    @field_validator("title")
     def validate_non_empty(cls, value):
 
         if not value or value.strip() == "":
-            raise ValueError("Field cannot be empty")
+            raise ValueError("Title cannot be empty")
 
         return value.strip()
