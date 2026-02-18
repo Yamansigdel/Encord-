@@ -1,5 +1,4 @@
-from dataclasses import field
-from pydantic import BaseModel, field_validator, model_validator, HttpUrl
+from pydantic import BaseModel, field_validator, model_validator, HttpUrl, Field
 from typing import List, Optional
 
 
@@ -49,9 +48,7 @@ class VideoUnit(BaseModel):
     objectUrl: HttpUrl
     title: str
     videoMetadata: VideoMetadata
-    projectTitle: Optional[str] = None
-    datasetTitle: Optional[str] = None
-    events: List[PlayEvent] = field(default_factory=list)
+    events: List[PlayEvent] = Field(default_factory=list)
 
     @field_validator("title")
     def validate_non_empty(cls, value):

@@ -1,4 +1,4 @@
-import time
+import time, json, tempfile
 from encord import EncordUserClient
 from encord.storage import FoldersSortBy
 from encord.objects import Classification
@@ -15,55 +15,38 @@ ONTOLOGY_HASH = "2e2fd297-b593-4af0-b600-f27eaa6e21b5"
 SSH_KEY_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
 
 #LOAD JSON
-videos = load_json_schema(JSON_PATH)
+project_hash, dataset_hash, ontology_hash, storage_folder_hash, videos = load_json_schema(JSON_PATH)
+
+# Remove unsupported fields before upload
+with open(JSON_PATH, "r") as f:
+    raw_data = json.load(f)
+
+raw_data.pop("project_hash", None)
+raw_data.pop("dataset_hash", None)
+raw_data.pop("ontology_hash", None)
+raw_data.pop("storage_folder_hash", None)
+
+# Write temporary cleaned JSON
+temp_json_path = tempfile.mktemp(suffix=".json")
+
+with open(temp_json_path, "w") as f:
+    json.dump(raw_data, f)
 
 if not videos:
     raise ValueError("No videos found in JSON")
-
-project_title = None
-dataset_title = None
-
-for video in videos:
-    if video.projectTitle and video.datasetTitle:
-        project_title = video.projectTitle
-        dataset_title = video.datasetTitle
-        break
-
-
-if not project_title or not dataset_title:
-    raise ValueError(
-        "projectTitle and datasetTitle must be defined in at least one video"
-    )
 
 #INITIALIZE CLIENT
 user_client = EncordUserClient.create_with_ssh_private_key(
     ssh_private_key_path=SSH_KEY_PATH
 )
 
-#CREATE OR FIND STORAGE FOLDER
-folders = list(
-    user_client.find_storage_folders(
-        search=dataset_title,
-        dataset_synced=None,
-        order=FoldersSortBy.NAME,
-        desc=False,
-        page_size=100,
-    )
-)
-
-if folders:
-    storage_folder = folders[0]
-else:
-    storage_folder = user_client.create_storage_folder(
-        name=dataset_title,
-        description="A folder to store s3 clips",
-        client_metadata={"dataset": dataset_title},
-    )
+#GET STORAGE FOLDER
+storage_folder = user_client.get_storage_folder(storage_folder_hash)
 
 #UPLOAD VIDEOS (OBJECT URL)
 upload_job_id=storage_folder.add_private_data_to_folder_start(
 integration_id=INTEGRATION_ID,
-private_files=JSON_PATH,
+private_files=temp_json_path,
 ignore_errors=True
 )
 
@@ -91,20 +74,9 @@ while True:
 
 print(f"All videos Uploaded to folder {storage_folder.name}")
 
-# FIND OR CREATE DATASET
-existing = user_client.get_datasets(title_eq=dataset_title)
-if existing:
-    dataset_hash = existing[0]["dataset"].dataset_hash
-    dataset = user_client.get_dataset(dataset_hash)
-    print(f"Using existing dataset: {dataset.title} ({dataset_hash})")
-else:
-    dataset_response = user_client.create_dataset(
-        dataset_title=dataset_title,
-        dataset_type=StorageLocation.AWS,
-        create_backing_folder=False,
-    )
-    dataset = user_client.get_dataset(dataset_response.dataset_hash)
-    print(f"Created new dataset: {dataset.title} ({dataset.dataset_hash})")
+# GET DATASET
+dataset = user_client.get_dataset(dataset_hash)
+print(f"Using dataset from JSON hash: {dataset.title}")
 
 # LINK FOLDER ITEMS TO DATASET
 items = list(storage_folder.list_items())
@@ -117,22 +89,9 @@ dataset.set_access_settings(
     DatasetAccessSettings(fetch_client_metadata=True)
 )
 
-# FIND OR CREATE PROJECT
-existing_project = list(user_client.list_projects(title_eq=project_title))
-
-if existing_project:
-    project = existing_project[0]
-    project_hash = project.project_hash
-    print(f"Using existing project: {project.title} ({project_hash})")
-else:
-    project_hash = user_client.create_project(
-        project_title=project_title,
-        ontology_hash=ONTOLOGY_HASH,
-        dataset_hashes=[dataset.dataset_hash],
-    )
-
-    project = user_client.get_project(project_hash)
-    print(f"Created new project: {project.title} ({project_hash})")
+#GET PROJECT
+project = user_client.get_project(project_hash)
+print(f"Using project from JSON hash: {project.title}")
 
 label_rows = project.list_label_rows_v2()
 

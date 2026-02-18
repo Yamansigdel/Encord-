@@ -50,9 +50,14 @@ def parse_bbox_field(s: str):
     return tuple(map(float, parts))
 
 
-def load_json_schema(json_path: str) -> List[VideoUnit]:
+def load_json_schema(json_path: str):
     with open(json_path, "r") as f:
         raw_data = json.load(f)
+
+    project_hash = raw_data.get("project_hash")
+    dataset_hash = raw_data.get("dataset_hash")
+    ontology_hash = raw_data.get("ontology_hash")
+    storage_folder_hash = raw_data.get("storage_folder_hash ")
 
     videos = []
 
@@ -70,8 +75,7 @@ def load_json_schema(json_path: str) -> List[VideoUnit]:
                 )
             )
 
-        try:
-            video_unit = VideoUnit(
+        video_unit = VideoUnit(
             objectUrl=item["objectUrl"],
             title=item["title"],
             videoMetadata=VideoMetadata(
@@ -79,18 +83,12 @@ def load_json_schema(json_path: str) -> List[VideoUnit]:
                 duration=float(metadata["duration"]),
                 width=int(metadata["width"]),
                 height=int(metadata["height"]),
-                file_size=metadata.get("file_size"),
-                mime_type=metadata.get("mime_type"),
+                file_size=metadata.get("file_size", 0),
+                mime_type=metadata.get("mime_type", "video/mp4"),
             ),
-            projectTitle=client_meta.get("projectTitle"),
-            datasetTitle=client_meta.get("datasetTitle"),
             events=events,
-            )
+        )
 
-            videos.append(video_unit)
+        videos.append(video_unit)
 
-        except Exception as e:
-            print(f"Schema validation failed for {item.get('title')}: {e}")
-
-
-    return videos
+    return project_hash, dataset_hash, ontology_hash, storage_folder_hash, videos
