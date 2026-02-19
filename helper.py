@@ -57,7 +57,7 @@ def load_json_schema(json_path: str):
     project_hash = raw_data.get("project_hash")
     dataset_hash = raw_data.get("dataset_hash")
     ontology_hash = raw_data.get("ontology_hash")
-    storage_folder_hash = raw_data.get("storage_folder_hash ")
+    storage_folder_hash = raw_data.get("storage_folder_hash")
 
     videos = []
 

@@ -11,11 +11,13 @@ from encord.orm.dataset import LongPollingStatus, StorageLocation
 BUNDLE_SIZE = 100
 INTEGRATION_ID="5631cdf7-34df-4174-9fa2-9d537e186717"
 JSON_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/artifacts/video_info.json"
-ONTOLOGY_HASH = "2e2fd297-b593-4af0-b600-f27eaa6e21b5"
 SSH_KEY_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yaman_key-private-key.ed25519"
 
 #LOAD JSON
 project_hash, dataset_hash, ontology_hash, storage_folder_hash, videos = load_json_schema(JSON_PATH)
+
+if not all([project_hash, dataset_hash, storage_folder_hash]):
+    raise ValueError("Missing required hashes in JSON")
 
 # Remove unsupported fields before upload
 with open(JSON_PATH, "r") as f:
