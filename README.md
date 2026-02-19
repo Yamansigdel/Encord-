@@ -56,6 +56,10 @@ pipeline/
 Example structure:
 ```
 {
+  "project_hash":"project_hash",
+  "dataset_hash":"dataset_hash",
+  "ontology_hash":"ontology_hash",
+  "storage_folder_hash":"storage_folder_hash",
   "videos": [
     {
       "objectUrl": "https://bucket.s3.region.amazonaws.com/path/play1.mp4",
@@ -69,8 +73,6 @@ Example structure:
         "mime_type": "video/mp4"
       },
       "clientMetadata": {
-        "projectTitle": "playType",
-        "datasetTitle": "playTypeData",
         "events": [
             {
             "eventType": "run",
