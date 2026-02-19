@@ -16,8 +16,11 @@ SSH_KEY_PATH = "/home/uswe/Downloads/data-intern-repo/encord/pipeline/encord-yam
 #LOAD JSON
 project_hash, dataset_hash, ontology_hash, storage_folder_hash, videos = load_json_schema(JSON_PATH)
 
+if not any([ontology_hash,videos]):
+    raise ValueError("Not found videos or ontology hash in JSON")
+
 if not all([project_hash, dataset_hash, storage_folder_hash]):
-    raise ValueError("Missing required hashes in JSON")
+    print("Missing required hashes in JSON, creation is proceeding")
 
 # Remove unsupported fields before upload
 with open(JSON_PATH, "r") as f:
@@ -34,16 +37,22 @@ temp_json_path = tempfile.mktemp(suffix=".json")
 with open(temp_json_path, "w") as f:
     json.dump(raw_data, f)
 
-if not videos:
-    raise ValueError("No videos found in JSON")
-
 #INITIALIZE CLIENT
 user_client = EncordUserClient.create_with_ssh_private_key(
     ssh_private_key_path=SSH_KEY_PATH
 )
 
-#GET STORAGE FOLDER
-storage_folder = user_client.get_storage_folder(storage_folder_hash)
+#CREATE OR FIND STORAGE FOLDER
+try:
+    storage_folder = user_client.get_storage_folder(storage_folder_hash)
+    print(f"Using storage folder from JSON hash: {storage_folder.name}")
+except Exception: 
+    storage_folder = user_client.create_storage_folder(
+    name="default_folder_storage",
+    description="A folder to store s3 clips",
+    client_metadata={"dataset": "default_folder_storage"},
+    )
+    print(f"Created new storage folder: {storage_folder.name}")
 
 #UPLOAD VIDEOS (OBJECT URL)
 upload_job_id=storage_folder.add_private_data_to_folder_start(
@@ -73,12 +82,20 @@ while True:
         print(f"Upload failed: {result.errors}")
         break
 
-
 print(f"All videos Uploaded to folder {storage_folder.name}")
 
-# GET DATASET
-dataset = user_client.get_dataset(dataset_hash)
-print(f"Using dataset from JSON hash: {dataset.title}")
+# FIND OR CREATE DATASET
+try:
+    dataset = user_client.get_dataset(dataset_hash)
+    print(f"Using dataset from JSON hash: {dataset.title}")
+except Exception:
+    dataset_response = user_client.create_dataset(
+        dataset_title="default_dataset",
+        dataset_type=StorageLocation.AWS,
+        create_backing_folder=False,
+    )
+    dataset = user_client.get_dataset(dataset_response.dataset_hash)
+    print(f"Created new dataset: {dataset.title}")
 
 # LINK FOLDER ITEMS TO DATASET
 items = list(storage_folder.list_items())
@@ -91,9 +108,18 @@ dataset.set_access_settings(
     DatasetAccessSettings(fetch_client_metadata=True)
 )
 
-#GET PROJECT
-project = user_client.get_project(project_hash)
-print(f"Using project from JSON hash: {project.title}")
+# FIND OR CREATE PROJECT
+try:
+    project = user_client.get_project(project_hash)
+    print(f"Using project from JSON hash: {project.title}")
+except Exception:
+    project_hash = user_client.create_project(
+        project_title="default_project",
+        ontology_hash=ontology_hash,
+        dataset_hashes=[dataset.dataset_hash],
+    )
+    project = user_client.get_project(project_hash)
+    print(f"Created new project: {project.title}")
 
 label_rows = project.list_label_rows_v2()
 
